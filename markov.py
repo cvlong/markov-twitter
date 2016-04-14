@@ -3,6 +3,7 @@ import sys
 from random import choice
 import twitter
 
+# https://twitter.com/jane_markov
 
 def open_and_read_file(filenames):
     """Given a list of files, open them, read the text, and return one long
@@ -14,6 +15,8 @@ def open_and_read_file(filenames):
         text_file = open(filename)
         body = body + text_file.read()
         text_file.close()
+
+    body = body.rstrip()
 
     return body
 
@@ -43,27 +46,67 @@ def make_chains(text_string):
 def make_text(chains):
     """Takes dictionary of markov chains; returns random text."""
 
-    key = choice(chains.keys())
-    words = [key[0], key[1]]
-    while key in chains:
-        # Keep looping until we have a key that isn't in the chains
-        # (which would mean it was the end of our original text)
-        #
-        # Note that for long texts (like a full book), this might mean
-        # it would run for a very long time.
+    current_key = choice(chains.keys())
+    
+    while current_key[0][0].istitle() == False:
+        current_key = choice(chains.keys())
 
-        word = choice(chains[key])
-        words.append(word)
-        key = (key[1], word)
+    text = " ".join(current_key)
 
-    return " ".join(words)
+    punctuation = ['.', '?', '!']
+
+    while text[-1] not in punctuation and len(text) < 140:
+        if current_key in chains:
+            string = choice(chains[current_key])
+            text = "{} {}".format(text, string)
+            current_key = list(current_key[1:])
+            current_key.append(string)
+            current_key = tuple(current_key)
+    
+    if len(text) < 140:
+        return text
+    else:
+        make_text(chains)
 
 
-def tweet(chains):
+    # key = choice(chains.keys())
+    # words = [key[0], key[1]]
+    # while key in chains and len(words) < 140:
+    #     # Keep looping until we have a key that isn't in the chains
+    #     # (which would mean it was the end of our original text)
+    #     #
+    #     # Note that for long texts (like a full book), this might mean
+    #     # it would run for a very long time.
+
+    #     word = choice(chains[key])
+    #     words.append(word)
+    #     key = (key[1], word)
+    #     # print len(words)
+    # 
+    # " ".join(words)
+
+
+def tweet(text):
     # Use Python os.environ to get at environmental variables
     # Note: you must run `source secrets.sh` before running this file
     # to make sure these environmental variables are set.
-    pass
+    
+
+    api = twitter.Api(
+        consumer_key=os.environ['TWITTER_CONSUMER_KEY'],
+        consumer_secret=os.environ['TWITTER_CONSUMER_SECRET'],
+        access_token_key=os.environ['TWITTER_ACCESS_TOKEN_KEY'],
+        access_token_secret=os.environ['TWITTER_ACCESS_TOKEN_SECRET'])
+
+    # print api.VerifyCredentials()
+
+    status = api.PostUpdate(text)
+    print status.text
+
+
+
+   
+
 
 # Get the filenames from the user through a command line prompt, ex:
 # python markov.py green-eggs.txt shakespeare.txt
@@ -75,5 +118,7 @@ text = open_and_read_file(filenames)
 # Get a Markov chain
 chains = make_chains(text)
 
+new_text = make_text(chains)
+
 # Your task is to write a new function tweet, that will take chains as input
-# tweet(chains)
+tweet(new_text)
